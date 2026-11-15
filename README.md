@@ -1,4 +1,4 @@
-# DataStock – Proyecto inicial (UT1, UT2)
+# DataStock – Proyecto final (UT1, UT2, UT3)
 
 **Módulo:** Acceso a Datos · 2.º DAM · IES Isidra de Guzmán · Curso 2026–2027  
 **Lenguaje:** Java 21 · **Construcción:** Maven · **Interfaz:** consola
@@ -8,8 +8,8 @@
 DataStock es una práctica **individual e integradora** que evolucionará durante tres unidades:
 
 - **UT1 – Ficheros:** importar JSON/XML, consultar en memoria, exportar, serializar y desarrollar dos actividades independientes (XPath y `RandomAccessFile`) -> Ya realizada
-- **UT2 – JDBC:** incorporar MySQL, operaciones SQL y transacciones. -> Se implementa en este proyecto
-- **UT3 – Componentes:** reorganizar el acceso a datos en componentes reutilizables.
+- **UT2 – JDBC:** incorporar MySQL, operaciones SQL y transacciones. -> Ya realizada
+- **UT3 – Componentes:** reorganizar el acceso a datos en componentes reutilizables. -> Se implementa en esta entrega
 
 **Este programa incluye los requisitos de la UT1 y desarrolla los de la UT2.**
 
