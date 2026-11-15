@@ -1,36 +1,132 @@
 package es.iesisidra.datastock.servicio;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 
 import es.iesisidra.datastock.util.ColoresConsola;
 
 public class Ruta {
-     /**
-     * metodo explorarRuta que nos permite ver toda la informacion subyacente de
-     * una ruta dada por el usuario
+
+    /**
+     * Comprueba que la ruta no este vacia y la convierte en un objeto Path.
      *
-     * @param ruta la ruta que se va a explorar
+     * @param ruta ruta introducida por el usuario
+     * @return objeto Path
+     */
+    private static Path convertirRuta(String ruta) {
+
+        if (ruta == null || ruta.trim().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "La ruta no puede estar vacia.");
+        }
+
+        try {
+            return Path.of(ruta.trim());
+        } catch (InvalidPathException e) {
+            throw new IllegalArgumentException(
+                    "El formato de la ruta es incorrecto.", e);
+        }
+    }
+
+    /**
+     * Valida una ruta para explorar archivos o directorios.
+     *
+     * @param ruta ruta que queremos explorar
+     * @return Path validado
+     */
+    public static Path validarParaExplorar(String ruta) {
+
+        Path path = convertirRuta(ruta);
+
+        if (!Files.exists(path)) {
+            throw new IllegalArgumentException(
+                    "La ruta introducida no existe.");
+        }
+
+        if (!Files.isReadable(path)) {
+            throw new IllegalArgumentException(
+                    "No tienes permisos para leer la ruta.");
+        }
+
+        return path;
+    }
+
+    /**
+     * Valida la ruta de un fichero que queremos leer. Se utiliza para importar
+     * JSON, XML y DAT.
+     *
+     * @param ruta ruta del fichero
+     * @return Path validado
+     */
+    public static Path validarParaLeer(String ruta) {
+
+        Path path = validarParaExplorar(ruta);
+
+        if (!Files.isRegularFile(path)) {
+            throw new IllegalArgumentException(
+                    "La ruta no corresponde a un fichero.");
+        }
+
+        return path;
+    }
+
+    /**
+     * Valida una ruta donde queremos guardar un fichero. Se utiliza para
+     * exportar JSON, XML y DAT.
+     *
+     * @param ruta ruta de destino
+     * @return Path validado
+     */
+    public static Path validarParaGuardar(String ruta) {
+
+        Path path = convertirRuta(ruta);
+
+        // Obtengo la carpeta donde voy a guardar.
+        Path padre = path.toAbsolutePath().getParent();
+
+        if (padre == null || !Files.isDirectory(padre)) {
+            throw new IllegalArgumentException(
+                    "El directorio de destino no existe.");
+        }
+
+        if (!Files.isWritable(padre)) {
+            throw new IllegalArgumentException(
+                    "No tienes permisos de escritura en el directorio.");
+        }
+
+        // Si ya existe, debe ser un fichero que pueda escribirse.
+        if (Files.exists(path)) {
+
+            if (!Files.isRegularFile(path)) {
+                throw new IllegalArgumentException(
+                        "La ruta corresponde a un directorio.");
+            }
+
+            if (!Files.isWritable(path)) {
+                throw new IllegalArgumentException(
+                        "No puedes sobrescribir el fichero.");
+            }
+        }
+
+        return path;
+    }
+
+    /**
+     * Explora una ruta y muestra la informacion del fichero o directorio.
+     *
+     * @param ruta ruta introducida por el usuario
      */
     public void explorarRuta(String ruta) {
 
         try {
-            if (ruta == null || ruta.trim().isEmpty()) { // la ruta que me dan no debe estar vacia
-                System.out.println(ColoresConsola.ROJO
-                        + "ERROR: Se debe proporcionar una ruta válida (el texto está vacio)" + ColoresConsola.RESET);
-                return; // no seguimos
-            }
-            // en caso de que la entrada no este vacia
 
-            File archivo = new File(ruta.trim());
+            // Validamos la ruta.
+            Path path = validarParaExplorar(ruta);
 
-            // Primer caso: la ruta no existe
-            if (!archivo.exists()) {
-                System.out.println(ColoresConsola.ROJO + "ERROR: Se debe proporcionar una ruta válida (no existe)"
-                        + ColoresConsola.RESET);
-                return; // no seguimos
-            }
+            File archivo = path.toFile();
 
-            // comprobamos si es un fichero y si es el caso mostramos su informacion
             if (archivo.isFile()) {
                 System.out.println("---- EXPLORAR FICHERO ----");
                 System.out.println("[NOMBRE] " + archivo.getName());
@@ -40,44 +136,56 @@ public class Ruta {
             }
 
             if (archivo.isDirectory()) {
-                System.out.println("---- EXPLORAR DIRECTORIO ----");
-                System.out.println("[RUTA] " + ruta);
-                File[] contenido = archivo.listFiles(); // obtenemos el contenido del directorio y nos preparamos para
-                // recorrerlo en caso de que no este vacio
 
-                if (contenido == null) { // es nulo o no contiene nada
-                    System.out.println(ColoresConsola.AMARILLO + "AVISO: NO HAY CONTENIDO EN LA RUTA PROPORCIONADA"
+                System.out.println("---- EXPLORAR DIRECTORIO ----");
+                System.out.println("[RUTA] " + path);
+
+                File[] contenido = archivo.listFiles();
+
+                if (contenido == null) {
+                    System.out.println(ColoresConsola.ROJO + "[ERROR] No se puede listar el directorio."
                             + ColoresConsola.RESET);
-                    return; // no seguimos
+                    return;
                 }
 
-                // inicializo y sumare mientras recorro
+                if (contenido.length == 0) {
+                    System.out.println(ColoresConsola.AMARILLO + "[AVISO] El directorio esta vacio."
+                            + ColoresConsola.RESET);
+                    return;
+                }
+
                 int totalFicheros = 0;
                 int totalDirectorios = 0;
 
                 for (File file : contenido) {
+
                     if (file.isFile()) {
                         System.out.println("[FICHERO] " + file.getName() + " " + file.length() + " bytes");
-                        totalFicheros++; // sumo
+                        totalFicheros++;
+
                     } else if (file.isDirectory()) {
                         System.out.println("[DIR] " + file.getName());
-                        totalDirectorios++; // sumo
+                        totalDirectorios++;
                     }
                 }
 
                 System.out.println("Total ficheros: " + totalFicheros + " | Directorios: " + totalDirectorios);
-
             }
 
-        } catch (SecurityException se) { // el sistema operativo bloquea por permisos
-            System.out.println(ColoresConsola.ROJO + "Error de acceso: Permisos denegados por el sistema "
-                    + se.getMessage() + ColoresConsola.RESET);
+        } catch (IllegalArgumentException e) {
 
-        } catch (Exception e) { // cualquier otra excepcion inesperada
-            System.out.println(ColoresConsola.ROJO + "Error inesperado al explorar la ruta " + e.getMessage()
+            System.out.println(ColoresConsola.ROJO + "[ERROR] " + e.getMessage() + ColoresConsola.RESET);
+
+        } catch (SecurityException e) {
+
+            System.out.println(ColoresConsola.ROJO + "[ERROR] Permisos denegados: " + e.getMessage()
+                    + ColoresConsola.RESET);
+
+        } catch (Exception e) {
+
+            System.out.println(ColoresConsola.ROJO + "[ERROR] Error inesperado: " + e.getMessage()
                     + ColoresConsola.RESET);
         }
-
     }
-    
+
 }

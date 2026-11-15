@@ -1,10 +1,8 @@
 package es.iesisidra.datastock.servicio;
 
-import java.io.File;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,25 +44,15 @@ public class InventarioXML {
      * @param ruta la ruta de donde se importa el xml
      */
     public void importarXml(String ruta) {
-        // 1. Validar si la ruta recibida es nula o está vacía
-        if (ruta == null || ruta.trim().isEmpty()) {
-            System.out.println(ColoresConsola.ROJO + "[ERROR] La ruta está vacía." + ColoresConsola.RESET);
-            return;
-        }
-
-        // Comprobar existencia del fichero
-        Path path = Paths.get(ruta.trim());
-        if (!Files.exists(path) || Files.isDirectory(path)) {
-            System.out.println(
-                    ColoresConsola.ROJO + "[ERROR] El fichero no existe o es un directorio." + ColoresConsola.RESET);
-            return;
-        }
 
         try {
-            // 3. Cargar el árbol de nodos DOM a través del repositorio seguro
+            // validamos la ruta
+            Path path = Ruta.validarParaLeer(ruta);
+
+            // Cargar el árbol de nodos DOM a través del repositorio seguro
             Document doc = xmlRepository.leer(path);
 
-            // no puede estar vacio y la razi debe de ser catalogo
+            // no puede estar vacio y la raiz debe de ser catalogo
 
             if (doc.getDocumentElement() == null
                     || !"catalogo".equals(
@@ -205,11 +193,16 @@ public class InventarioXML {
             }
 
         } catch (org.xml.sax.SAXException e) {
-            System.out.println(ColoresConsola.ROJO + "[ERROR] El fichero XML está malformado. Importación cancelada."
-                    + ColoresConsola.RESET);
+
+            System.out.println(ColoresConsola.ROJO + "[ERROR] El fichero XML está malformado. Importación cancelada." + ColoresConsola.RESET);
+
+        } catch (IllegalArgumentException | SecurityException e) {
+
+            System.out.println(ColoresConsola.ROJO + "[ERROR] " + e.getMessage() + ColoresConsola.RESET);
+
         } catch (Exception e) {
-            System.out.println(
-                    ColoresConsola.ROJO + "[ERROR] al leer el fichero: " + e.getMessage() + ColoresConsola.RESET);
+
+            System.out.println(ColoresConsola.ROJO + "[ERROR] al leer el fichero: " + e.getMessage() + ColoresConsola.RESET);
         }
     }
 
@@ -239,28 +232,18 @@ public class InventarioXML {
      * @param ruta Ruta del fichero de destino donde se guarda el XML
      */
     public void exportarXml(String ruta) {
-        if (productos.isEmpty()) {
-            System.out.println(
-                    ColoresConsola.ROJO + "[ERROR] El inventario está vacío. No hay nada que exportar." + ColoresConsola.RESET);
-            return;
-        }
+        Path pathDestino;
 
-        if (ruta == null || ruta.trim().isEmpty()) {
-            System.out.println(ColoresConsola.ROJO + "[ERROR] La ruta de destino no es válida." + ColoresConsola.RESET);
-            return;
-        }
+        try {
+            pathDestino = Ruta.validarParaGuardar(ruta);
 
-        File archivo = new File(ruta.trim());
-
-        // no debe ser un directorio
-        if (archivo.isDirectory()) {
-            System.out.println("[ERROR] La ruta corresponde a un directorio.");
+        } catch (IllegalArgumentException | SecurityException e) {
+            System.out.println(ColoresConsola.ROJO + "[ERROR] " + e.getMessage() + ColoresConsola.RESET);
             return;
         }
 
         // pido confirmacion antes que cualquier cosa (en el caso de que exista)
-
-        if (archivo.exists() && !LectorConsola.confirmar("[AVISO] Seguro que quieres sobrescribir: " + ruta.trim())) {
+        if (Files.exists(pathDestino) && !LectorConsola.confirmar("[AVISO] Seguro que quieres sobrescribir: " + ruta.trim())) {
             System.out.println(
                     ColoresConsola.VERDE + "[OK] Cancelacion recibida saliendo correctamente" + ColoresConsola.RESET);
             return;
@@ -310,7 +293,6 @@ public class InventarioXML {
             }
 
             // uso el metodo del repositorio para guardar toda la estructura del documento creado
-            Path pathDestino = Paths.get(ruta.trim());
             xmlRepository.guardar(doc, pathDestino);
 
             System.out.println(

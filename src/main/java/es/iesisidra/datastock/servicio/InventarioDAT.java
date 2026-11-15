@@ -4,9 +4,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,6 +13,7 @@ import es.iesisidra.datastock.util.ColoresConsola;
 import es.iesisidra.datastock.util.LectorConsola;
 
 public class InventarioDAT {
+
     private final List<Producto> productos;
     private final GestorProductos gestorProductos = new GestorProductos();
 
@@ -28,13 +27,20 @@ public class InventarioDAT {
      * @param ruta donde se crea el archivo .dat
      */
     public void serializarProductos(String ruta) {
-        if (ruta == null || ruta.trim().isEmpty()) {
-            System.out.println(ColoresConsola.ROJO + "[ERROR] La ruta no puede estar vacia" + ColoresConsola.RESET);
-            return; // no sigo
-        }
 
         if (productos.isEmpty()) {
             System.out.println(ColoresConsola.ROJO + "[ERROR] No hay productos" + ColoresConsola.RESET);
+            return;
+        }
+
+        // Valido la ruta de destino para guardar el fichero.
+        Path path;
+
+        try {
+            path = Ruta.validarParaGuardar(ruta);
+
+        } catch (IllegalArgumentException | SecurityException e) {
+            System.out.println(ColoresConsola.ROJO + "[ERROR] " + e.getMessage() + ColoresConsola.RESET);
             return;
         }
 
@@ -44,7 +50,7 @@ public class InventarioDAT {
             return;
         }
 
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(ruta.trim()))) {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(path.toFile()))) {
             oos.writeObject(productos);
             System.out.println(ColoresConsola.VERDE + productos.size() + " productos serializados correctamente"
                     + ColoresConsola.RESET);
@@ -56,22 +62,21 @@ public class InventarioDAT {
 
     }
 
-     /**
+    /**
      * Metodo encargado de obtener los productos ya serializados
      *
      * @param ruta donde esta el archivo .dat
      */
     public void deserializarProductos(String ruta) {
-        if (ruta == null || ruta.trim().isEmpty()) {
-            System.out.println(ColoresConsola.ROJO + "La ruta no puede estar vacia" + ColoresConsola.RESET);
-            return; // no sigo
-        }
+        // Valido la ruta antes de intentar leer el fichero.
+        
+        Path path;
 
-        // compruebo si existe
-        Path path = Paths.get(ruta.trim());
-        if (!Files.exists(path) || Files.isDirectory(path)) {
-            System.out.println(
-                    ColoresConsola.ROJO + "ERROR: El fichero no existe o es un directorio." + ColoresConsola.RESET);
+        try {
+            path = Ruta.validarParaLeer(ruta);
+
+        } catch (IllegalArgumentException | SecurityException e) {
+            System.out.println(ColoresConsola.ROJO + "[ERROR] " + e.getMessage() + ColoresConsola.RESET);
             return;
         }
 
@@ -88,7 +93,6 @@ public class InventarioDAT {
             List<?> productosObtenidos = new ArrayList<>();
 
             // compruebo que sea una lista
-
             if (obtencion instanceof List<?>) {
                 productosObtenidos = (List<?>) obtencion;
             } else {
@@ -116,7 +120,6 @@ public class InventarioDAT {
 
             // en caso de que salga todo todo bien vacio mi lista de productos y añado todos
             // los que puse en mi auxiliar
-
             productos.clear();
             productos.addAll(listaAuxiliar);
             System.out.println(ColoresConsola.VERDE + productos.size() + " [OK] productos obtenidos correctamente"
@@ -128,5 +131,5 @@ public class InventarioDAT {
         }
 
     }
-    
+
 }

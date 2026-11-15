@@ -1,8 +1,9 @@
 package es.iesisidra.datastock.servicio;
 
-import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +19,7 @@ import es.iesisidra.datastock.util.ColoresConsola;
 import es.iesisidra.datastock.util.LectorConsola;
 
 public class InventarioJSON {
+
     // cabe aclarar que aqui nos preparamos para pasar la lista de productos pero realmente se pasa en Inventario
     private final List<Producto> productos;
 
@@ -29,7 +31,6 @@ public class InventarioJSON {
         this.gestorProductos = new GestorProductos();
     }
 
-
     /**
      * Metodo para importar JSON con comprobaciones y validando el producto en
      * base a las reglas impuestas en nuestro metodo validarProducto
@@ -37,31 +38,19 @@ public class InventarioJSON {
      * @param ruta
      */
     public void importarJson(String ruta) {
-        // primero valido la ruta
-        if (ruta == null || ruta.trim().isEmpty()) {
-            System.out.println(ColoresConsola.ROJO + "[ERROR] No puedes introducir una ruta vacia" + ColoresConsola.RESET);
-            return; // salgo
-        }
 
-        // si no esta vacia le quito espacios y verifico que exista
-        File archivo = new File(ruta.trim());
+        Path path;
+
         try {
-            if (!archivo.exists() || !archivo.isFile()) { // debe de existir y no ser un directorio
-                System.out.println(
-                        ColoresConsola.ROJO + "[ERROR] La ruta introducida no existe/es un directorio" + ColoresConsola.RESET);
-                return;
-            }
+            path = Ruta.validarParaLeer(ruta); // comprueba que sea un archivo valido
 
-        } catch (SecurityException se) {
-            System.out.println(ColoresConsola.ROJO + "[ERROR] Error de permisos: " + se.getMessage() + ColoresConsola.RESET);
-            return;
-        } catch (Exception e) {
-            System.out.println(ColoresConsola.ROJO + "[ERROR] Error imprevisto: " + e.getMessage() + ColoresConsola.RESET);
+        } catch (IllegalArgumentException | SecurityException e) {
+            System.out.println(ColoresConsola.ROJO + "[ERROR] " + e.getMessage() + ColoresConsola.RESET);
             return;
         }
 
         // uso el try-with-resources para el cierre automatico del FileReader
-        try (FileReader reader = new FileReader(archivo)) {
+        try (FileReader reader = new FileReader(path.toFile())) {
             // convierto el contenido del archivo en una estructura JSON
             JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
 
@@ -180,7 +169,7 @@ public class InventarioJSON {
         }
     }
 
-     /**
+    /**
      * Metodo exportarJson que nos permite exportar el catalogo de productos a
      * un fichero en formato JSON usando la libreria GSON
      *
@@ -194,25 +183,18 @@ public class InventarioJSON {
             return;
         }
 
-        // la ruta debe ser valida
-        if (ruta == null || ruta.trim().isEmpty()) {
-            System.out.println(ColoresConsola.ROJO + "[ERROR] La ruta de destino no es válida." + ColoresConsola.RESET);
+        Path path;
+
+        try {
+            path = Ruta.validarParaGuardar(ruta);
+
+        } catch (IllegalArgumentException | SecurityException e) {
+            System.out.println(ColoresConsola.ROJO + "[ERROR] " + e.getMessage() + ColoresConsola.RESET);
             return;
         }
 
-        File archivo = new File(ruta.trim());
-
-        // no debe ser un directorio
-        if (archivo.isDirectory()) {
-            System.out.println("[ERROR] La ruta corresponde a un directorio.");
-            return;
-        }
-
-        // pido confirmacion antes que cualquier cosa (en el caso de que exista)
-
-        if (archivo.exists() && !LectorConsola.confirmar("[AVISO] Seguro que quieres sobrescribir: " + ruta.trim())) {
-            System.out.println(
-                    ColoresConsola.VERDE + "[OK] Cancelacion recibida saliendo correctamente" + ColoresConsola.RESET);
+        if (Files.exists(path) && !LectorConsola.confirmar("[AVISO] Seguro que quieres sobrescribir: " + path)) {
+            System.out.println(ColoresConsola.VERDE + "[OK] Cancelacion recibida saliendo correctamente" + ColoresConsola.RESET);
             return;
         }
 
@@ -229,7 +211,7 @@ public class InventarioJSON {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
         // try-with-resources para abrir y cerrar el writer de forma segura
-        try (FileWriter writer = new FileWriter(ruta.trim())) {
+        try (FileWriter writer = new FileWriter(path.toFile())) {
 
             // convierto la lista de productos completa a texto JSON
             gson.toJson(raiz, writer);
@@ -243,7 +225,5 @@ public class InventarioJSON {
         }
 
     }
-
-
 
 }
