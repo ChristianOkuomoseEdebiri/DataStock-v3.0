@@ -63,7 +63,7 @@ public class InventarioConsultas {
 
             }
             
-        } while (!encontrado && contador > productos.size()); // si lo encontramos o ya no nos quedan mas productos dejamos de buscar
+        } while (!encontrado && contador < productos.size()); // si lo encontramos o ya no nos quedan mas productos dejamos de buscar
 
 
         if (!encontrado) {

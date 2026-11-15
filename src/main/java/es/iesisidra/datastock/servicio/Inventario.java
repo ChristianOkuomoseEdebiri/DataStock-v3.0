@@ -40,7 +40,7 @@ public class Inventario {
     }
 
     /**
-     * 
+     *
      * @Obtiene el gestor de productos que usa AccesoAleatorio
      */
 

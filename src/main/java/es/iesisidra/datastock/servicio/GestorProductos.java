@@ -250,57 +250,42 @@ public class GestorProductos {
     }
 
     /**
-     * Metodo para consultar un producto por su codigo mostrando todos sus datos
-     * y los nombres de su categoria y proveedor asociados
+     * Metodo para consultar un producto por su codigo utilizando el componente
+     * ConsultaProductoJdbc.
      */
     public void consultarProductoPorCodigo() {
+
+        // Solicito el codigo al usuario.
         String codigoIntroducido = LectorConsola.leerTexto("Introduce el codigo del producto");
 
+        // Compruebo que no este vacio.
         if (codigoIntroducido == null || codigoIntroducido.trim().isEmpty()) {
             System.out.println(ColoresConsola.ROJO + "[ERROR] El codigo no puede estar vacio" + ColoresConsola.RESET);
             return;
         }
 
-        // normalizo el codigo quitando espacios y pasandolo a mayusculas
+        // Normalizo el codigo.
         String codigoLimpio = codigoIntroducido.trim().toUpperCase();
 
-        // uso INNER JOIN con alias para traer de golpe los nombres de categoria y proveedor
-        String sqlConsulta = "SELECT p.codigo, p.nombre, p.precio, p.stock, p.categoria_id, p.proveedor_id, "
-                + "c.nombre AS nombre_categoria, pr.nombre AS nombre_proveedor "
-                + "FROM producto p "
-                + "INNER JOIN categoria c ON p.categoria_id = c.id "
-                + "INNER JOIN proveedor pr ON p.proveedor_id = pr.id "
-                + "WHERE p.codigo = ?";
+        // Creo el componente reutilizable.
+        ConsultaProductoJdbc consulta = new ConsultaProductoJdbc();
 
-        try (Connection con = ConexionBD.obtenerConexion(); PreparedStatement ps = con.prepareStatement(sqlConsulta)) {
+        try {
 
-            // establezco el codigo en la posicion de la interrogacion
-            ps.setString(1, codigoLimpio);
+            // Busco el producto utilizando el componente.
+            Producto p = consulta.buscarPorCodigo(codigoLimpio);
 
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) { // si no entra es que no existe ningun producto con ese codigo
-                    System.out.println(ColoresConsola.AZUL + "[AVISO] No existe ningun producto con el codigo: " + codigoLimpio + ColoresConsola.RESET);
-                    return;
-                }
-
-                String codigo = rs.getString("codigo");
-                String nombre = rs.getString("nombre");
-                BigDecimal precio = rs.getBigDecimal("precio");
-                int stock = rs.getInt("stock");
-                int idCategoria = rs.getInt("categoria_id");
-                String nombreCategoria = rs.getString("nombre_categoria");
-                int idProveedor = rs.getInt("proveedor_id");
-                String nombreProveedor = rs.getString("nombre_proveedor");
-
-                System.out.println("[CODIGO] " + codigo
-                        + " [NOMBRE] " + nombre
-                        + " [PRECIO] " + precio
-                        + " [STOCK] " + stock
-                        + " [CATEGORIA] " + idCategoria + " (" + nombreCategoria + ")"
-                        + " [PROVEEDOR] " + idProveedor + " (" + nombreProveedor + ")");
+            // Si no existe, muestro el aviso.
+            if (p == null) {
+                System.out.println(ColoresConsola.AZUL + "[AVISO] No existe ningun producto con el codigo: " + codigoLimpio + ColoresConsola.RESET);
+                return;
             }
 
+            // Muestro los datos del producto encontrado.
+            System.out.println("[CODIGO] " + p.getCodigo() + " [NOMBRE] " + p.getNombre() + " [PRECIO] " + p.getPrecio() + " [STOCK] " + p.getStock() + " [CATEGORIA] " + p.getCategoriaId() + " (" + consulta.getNombreCategoria() + ") [PROVEEDOR] " + p.getProveedorId() + " (" + consulta.getNombreProveedor() + ")");
+
         } catch (SQLException e) {
+
             System.out.println(ColoresConsola.ROJO + "[ERROR] " + e.getMessage() + ColoresConsola.RESET);
         }
     }
@@ -554,20 +539,18 @@ public class GestorProductos {
     }
 
     /**
-     * Metodo para listar todos los productos con los nombres de su categoria y proveedor
-     * ordenados por codigo
+     * Metodo para listar todos los productos con los nombres de su categoria y
+     * proveedor ordenados por codigo
      */
     public void listarProductos() {
         String listar = "SELECT p.codigo, p.nombre, p.precio, p.stock, p.categoria_id, p.proveedor_id, "
-                      + "c.nombre AS nombre_categoria, pr.nombre AS nombre_proveedor "
-                      + "FROM producto p "
-                      + "INNER JOIN categoria c ON p.categoria_id = c.id "
-                      + "INNER JOIN proveedor pr ON p.proveedor_id = pr.id "
-                      + "ORDER BY p.codigo"; // no pongo ASC ya que por defecto es ascendente
+                + "c.nombre AS nombre_categoria, pr.nombre AS nombre_proveedor "
+                + "FROM producto p "
+                + "INNER JOIN categoria c ON p.categoria_id = c.id "
+                + "INNER JOIN proveedor pr ON p.proveedor_id = pr.id "
+                + "ORDER BY p.codigo"; // no pongo ASC ya que por defecto es ascendente
 
-        try (Connection con = ConexionBD.obtenerConexion(); 
-             PreparedStatement psListar = con.prepareStatement(listar);
-             ResultSet rs = psListar.executeQuery()) {
+        try (Connection con = ConexionBD.obtenerConexion(); PreparedStatement psListar = con.prepareStatement(listar); ResultSet rs = psListar.executeQuery()) {
 
             boolean vacio = true; // si entra en el bucle es que hay por lo menos un producto por lo que no estaria vacio
 
@@ -582,12 +565,12 @@ public class GestorProductos {
                 int idProveedor = rs.getInt("proveedor_id");
                 String nombreProveedor = rs.getString("nombre_proveedor");
 
-                System.out.println("[CODIGO] " + codigo 
-                                 + " [NOMBRE] " + nombre 
-                                 + " [PRECIO] " + precio 
-                                 + " [STOCK] " + stock 
-                                 + " [CATEGORIA] " + idCategoria + " (" + nombreCategoria + ")"
-                                 + " [PROVEEDOR] " + idProveedor + " (" + nombreProveedor + ")");
+                System.out.println("[CODIGO] " + codigo
+                        + " [NOMBRE] " + nombre
+                        + " [PRECIO] " + precio
+                        + " [STOCK] " + stock
+                        + " [CATEGORIA] " + idCategoria + " (" + nombreCategoria + ")"
+                        + " [PROVEEDOR] " + idProveedor + " (" + nombreProveedor + ")");
             }
 
             if (vacio) {
@@ -613,15 +596,14 @@ public class GestorProductos {
         String textoLimpio = textoIntroducido.trim();
 
         String buscarNombre = "SELECT p.codigo, p.nombre, p.precio, p.stock, p.categoria_id, p.proveedor_id, "
-                            + "c.nombre AS nombre_categoria, pr.nombre AS nombre_proveedor "
-                            + "FROM producto p "
-                            + "INNER JOIN categoria c ON p.categoria_id = c.id "
-                            + "INNER JOIN proveedor pr ON p.proveedor_id = pr.id "
-                            + "WHERE p.nombre LIKE ? "
-                            + "ORDER BY p.codigo";
+                + "c.nombre AS nombre_categoria, pr.nombre AS nombre_proveedor "
+                + "FROM producto p "
+                + "INNER JOIN categoria c ON p.categoria_id = c.id "
+                + "INNER JOIN proveedor pr ON p.proveedor_id = pr.id "
+                + "WHERE p.nombre LIKE ? "
+                + "ORDER BY p.codigo";
 
-        try (Connection con = ConexionBD.obtenerConexion(); 
-             PreparedStatement psBuscar = con.prepareStatement(buscarNombre)) {
+        try (Connection con = ConexionBD.obtenerConexion(); PreparedStatement psBuscar = con.prepareStatement(buscarNombre)) {
 
             // concateno los % para buscar coincidencias parciales en cualquier posicion del nombre
             psBuscar.setString(1, "%" + textoLimpio + "%");
@@ -665,15 +647,14 @@ public class GestorProductos {
         }
 
         String buscarStock = "SELECT p.codigo, p.nombre, p.precio, p.stock, p.categoria_id, p.proveedor_id, "
-                           + "c.nombre AS nombre_categoria, pr.nombre AS nombre_proveedor "
-                           + "FROM producto p "
-                           + "INNER JOIN categoria c ON p.categoria_id = c.id "
-                           + "INNER JOIN proveedor pr ON p.proveedor_id = pr.id "
-                           + "WHERE p.stock < ? "
-                           + "ORDER BY p.stock, p.codigo"; // ordenamos primero por menor stock y luego por codigo
+                + "c.nombre AS nombre_categoria, pr.nombre AS nombre_proveedor "
+                + "FROM producto p "
+                + "INNER JOIN categoria c ON p.categoria_id = c.id "
+                + "INNER JOIN proveedor pr ON p.proveedor_id = pr.id "
+                + "WHERE p.stock < ? "
+                + "ORDER BY p.stock, p.codigo"; // ordenamos primero por menor stock y luego por codigo
 
-        try (Connection con = ConexionBD.obtenerConexion(); 
-             PreparedStatement psStock = con.prepareStatement(buscarStock)) {
+        try (Connection con = ConexionBD.obtenerConexion(); PreparedStatement psStock = con.prepareStatement(buscarStock)) {
 
             // establezco el umbral en la posicion de la interrogacion
             psStock.setInt(1, umbral);
@@ -692,7 +673,7 @@ public class GestorProductos {
                     int idProveedor = rs.getInt("proveedor_id");
                     String nombreProveedor = rs.getString("nombre_proveedor");
 
-                   System.out.println("[CODIGO] " + codigo + " [NOMBRE] " + nombre + " [PRECIO] " + precio + " [STOCK] " + stock + " [CATEGORIA] " + idCategoria + " (" + nombreCategoria + ")" + " [PROVEEDOR] " + idProveedor + " (" + nombreProveedor + ")");
+                    System.out.println("[CODIGO] " + codigo + " [NOMBRE] " + nombre + " [PRECIO] " + precio + " [STOCK] " + stock + " [CATEGORIA] " + idCategoria + " (" + nombreCategoria + ")" + " [PROVEEDOR] " + idProveedor + " (" + nombreProveedor + ")");
                 }
 
                 if (vacio) {
@@ -738,10 +719,7 @@ public class GestorProductos {
             // desactivamos el autocommit para que todo el lote vaya en una unica transaccion
             con.setAutoCommit(false);
 
-            try (PreparedStatement psCodigo = con.prepareStatement(buscarCodigo);
-                 PreparedStatement psCategoria = con.prepareStatement(referenciaCategoria);
-                 PreparedStatement psProveedor = con.prepareStatement(referenciaProveedor);
-                 PreparedStatement psInsertar = con.prepareStatement(insertarProducto)) {
+            try (PreparedStatement psCodigo = con.prepareStatement(buscarCodigo); PreparedStatement psCategoria = con.prepareStatement(referenciaCategoria); PreparedStatement psProveedor = con.prepareStatement(referenciaProveedor); PreparedStatement psInsertar = con.prepareStatement(insertarProducto)) {
 
                 for (Producto p : listaMemoria) {
 
@@ -819,10 +797,5 @@ public class GestorProductos {
             System.out.println(ColoresConsola.ROJO + "[ERROR] " + e.getMessage() + ColoresConsola.RESET);
         }
     }
-
-
-
-
-
 
 }

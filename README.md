@@ -142,3 +142,16 @@ DataStock_V2/
 * **¿Qué es un pool de conexiones?** Es un conjunto (caché) de conexiones a la base de datos que se mantienen abiertas y listas para ser reutilizadas por la aplicación (mediante librerías como HikariCP). En lugar de abrir y cerrar físicamente una conexión de red en cada consulta, el programa toma prestada una conexión libre del pool y la devuelve al terminar.
 * **¿Cuándo resulta útil?** Es imprescindible en aplicaciones web, APIs REST o sistemas empresariales con alta concurrencia donde cientos de usuarios realizan peticiones simultáneas, ya que abrir una conexión física TCP/IP y autenticar credenciales en cada petición es una operación costosa que saturaría el servidor.
 * **¿Por qué DataStock puede funcionar con conexiones cortas y bien cerradas?** Porque DataStock es una aplicación de consola monousuario e interactiva donde las operaciones se ejecutan de una en una a ritmo humano. El volumen de peticiones por segundo es mínimo, por lo que abrir la conexión bajo demanda y cerrarla inmediatamente mediante bloques `try-with-resources` garantiza que no queden recursos bloqueados en el servidor sin penalizar el rendimiento perceptible.
+
+
+### UT3: Componentes reutilizables
+
+* **¿Qué ventaja tiene separar la lectura JSON del menú? ¿Qué inconveniente o coste introduce crear más clases?** La ventaja principal es impedir que una clase tenga todas las responsabilidades, además, si queremos usar LectorProductosJson en otros metodos ahora si podremos. El inconveniente es que tendremos que dedicar más tiempo a organizar las clases y tener claro como se relacionan entre ellas.
+
+* **¿Por qué conviene separar una consulta JDBC de la presentación por consola?** Conviene separarlas porque cada clase debe tener su propia responsabilidad. En nuestro caso, ConsultaProductoJdbc se encarga de realizar la consulta a MySQL y devolver el producto encontrado, mientras que GestorProductos se encarga de mostrar los resultados por consola. Asi no dependemos de la consola.
+
+* **¿Qué herramientas has utilizado (IDE, Maven, Javadoc y, si procede, JUnit) y para qué sirve cada una?** IDE (Visual Studio Code) -> lo he utilizado como entorno de trabajo para desarrollar, organizar y ejecutar el proyecto. Maven -> Lo he utilizado para ejecutar el proyecto, añadir las dependencias (como Gson, MySQL y SQLite). Javadoc -> para documentar las clases y los metodos. No he usado JUnit ya que he realizado las pruebas manualmente y estan documentadas.
+
+
+
+
