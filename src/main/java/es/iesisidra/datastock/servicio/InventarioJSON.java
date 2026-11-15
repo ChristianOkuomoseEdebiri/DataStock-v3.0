@@ -2,6 +2,7 @@ package es.iesisidra.datastock.servicio;
 
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -32,140 +33,88 @@ public class InventarioJSON {
     }
 
     /**
-     * Metodo para importar JSON con comprobaciones y validando el producto en
-     * base a las reglas impuestas en nuestro metodo validarProducto
+     * Metodo para importar productos JSON utilizando el componente reutilizable
+     * LectorProductosJson.
      *
-     * @param ruta
+     * @param ruta ruta del fichero JSON
      */
     public void importarJson(String ruta) {
 
-        Path path;
-
         try {
-            path = Ruta.validarParaLeer(ruta); // comprueba que sea un archivo valido
 
-        } catch (IllegalArgumentException | SecurityException e) {
-            System.out.println(ColoresConsola.ROJO + "[ERROR] " + e.getMessage() + ColoresConsola.RESET);
-            return;
-        }
+            // Creo el componente encargado de leer los productos.
+            LectorProductosJson lector = new LectorProductosJson();
 
-        // uso el try-with-resources para el cierre automatico del FileReader
-        try (FileReader reader = new FileReader(path.toFile())) {
-            // convierto el contenido del archivo en una estructura JSON
-            JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
+            // Leo el fichero y obtengo los productos validos.
+            List<Producto> productosLeidos = lector.leer(ruta);
 
-            // verifico que la raiz tenga "productos" y que efectivamente sea un array
-            if (!root.has("productos") || !root.get("productos").isJsonArray()) {
-                System.out.println(
-                        ColoresConsola.ROJO + "[ERROR] La raiz debe contener el array de productos" + ColoresConsola.RESET);
-                return;
-            }
+            // Recupero los resultados de la lectura.
+            int encontrados = lector.getEncontrados();
+            List<String> incidencias = lector.getIncidencias();
 
-            // obtengo el array de productos y preparo el Gson para la conversion
-            JsonArray arrayproductos = root.getAsJsonArray("productos");
-
-            Gson gson = new Gson();
-
-            // inicializo contadores y preparo la lista donde guardo los mensajes de error
-            int encontrados = arrayproductos.size();
-            int rechazados = 0;
             int importados = 0;
+            int rechazados = incidencias.size();
 
-            List<String> incidencias = new ArrayList<>();
+            // Recorro los productos validos obtenidos del JSON.
+            for (Producto p : productosLeidos) {
 
-            for (int i = 0; i < encontrados; i++) {
+                // Compruebo que no haya errores respecto al inventario actual.
+                List<String> errores = gestorProductos.validarProducto(p, productos);
 
-                try {
-                    // Verificamos que el elemento actual del array sea efectivamente un objeto JSON
-                    if (!arrayproductos.get(i).isJsonObject()) {
-                        throw new IllegalArgumentException("El elemento no es un objeto JSON válido.");
-                    }
+                if (errores.isEmpty()) {
 
-                    JsonObject elem = arrayproductos.get(i).getAsJsonObject();
+                    // Añado el producto al inventario.
+                    productos.add(p);
+                    importados++;
 
-                    // Validamos que los campos obligatorios existan y no sean tipos incompatibles
-                    if (!elem.has("codigo") || elem.get("codigo").isJsonNull()) {
-                        throw new IllegalArgumentException("El código es obligatorio (campo ausente/vacío)");
-                    }
-                    if (!elem.has("precio") || elem.get("precio").isJsonNull()) {
-                        throw new IllegalArgumentException("El precio es obligatorio (campo ausente/vacío)");
-                    }
-                    if (!elem.has("stock") || elem.get("stock").isJsonNull()) {
-                        throw new IllegalArgumentException("El stock es obligatorio (campo ausente/vacío)");
-                    }
+                } else {
 
-                    // deserializo el objeto en una instancia de la clase Producto
-                    Producto p = gson.fromJson(elem, Producto.class);
-
-                    // limpio espacios del codigo del producto
-                    if (p.getCodigo() != null) { // si es nulo e intento hacer .trim tendria problemas
-                        p.setCodigo(p.getCodigo().trim());
-                    }
-
-                    // validamos las reglas predefinidas antes
-                    List<String> errores = gestorProductos.validarProducto(p, productos);
-
-                    // si esta vacio no hay errores
-                    if (errores.isEmpty()) {
-                        productos.add(p);
-                        importados++;
-                    } else {
-                        rechazados++; // tiene minimo un error
-
-                        // construyo la cadena con los motivos de rechazo
-                        StringBuilder mensajeError = new StringBuilder();
-
-                        for (int j = 0; j < errores.size(); j++) {
-                            mensajeError.append(errores.get(j));
-
-                            if (j < errores.size() - 1) {
-                                mensajeError.append(", "); // separador entre errores
-                            }
-                        }
-                        // guardo la incidencia pero comprobando que el codigo no sea nulo
-                        String cod;
-                        if (p.getCodigo() != null && !p.getCodigo().isEmpty()) {
-                            cod = p.getCodigo();
-                        } else {
-                            cod = "Producto " + (i + 1);
-                        }
-
-                        incidencias.add(cod + ": " + mensajeError.toString());
-                    }
-
-                } catch (IllegalArgumentException iae) {
                     rechazados++;
-                    incidencias.add("Producto " + (i + 1) + ": " + iae.getMessage());
-                } catch (Exception e) {
-                    rechazados++;
-                    incidencias.add("Producto " + (i + 1) + ": Error en el formato de datos.");
+
+                    // Construyo el mensaje con los motivos de rechazo.
+                    StringBuilder mensajeError = new StringBuilder();
+
+                    for (int j = 0; j < errores.size(); j++) {
+                        mensajeError.append(errores.get(j));
+
+                        if (j < errores.size() - 1) {
+                            mensajeError.append(", ");
+                        }
+                    }
+
+                    incidencias.add(p.getCodigo() + ": " + mensajeError.toString());
                 }
-
             }
 
-            // resultado
+            // Muestro el resultado de la importacion.
             System.out.println("--- IMPORTAR JSON ---");
             System.out.println("Ruta: " + ruta);
             System.out.println("Productos encontrados: " + encontrados);
             System.out.println("Importados: " + importados + " | Rechazados: " + rechazados);
 
-            // si se registraron incidencias durante el proceso, las muestro
+            // Muestro las incidencias registradas.
             if (!incidencias.isEmpty()) {
+
                 System.out.println("[AVISO] INCIDENCIAS:");
+
                 for (String inc : incidencias) {
                     System.out.println("  - " + inc);
                 }
-                System.out.println("[ERROR] Importación finalizada con incidencias");
+
+                System.out.println(ColoresConsola.ROJO + "[ERROR] Importacion finalizada con incidencias" + ColoresConsola.RESET);
+
             } else {
-                System.out.println("[OK] Importación finalizada con éxito");
+
+                System.out.println(ColoresConsola.VERDE + "[OK] Importacion finalizada con exito" + ColoresConsola.RESET);
             }
-        } catch (JsonSyntaxException jse) { // suelen ser errores de sintaxis del JSON
-            System.out
-                    .println(ColoresConsola.ROJO + "[ERROR]: El fichero JSON está malformado. Se cancela la importación. "
-                            + jse.getMessage() + ColoresConsola.RESET);
-        } catch (Exception e) {
-            System.out.println(
-                    ColoresConsola.ROJO + "[ERROR] al leer el fichero: " + e.getMessage() + ColoresConsola.RESET);
+
+        } catch (IllegalArgumentException | SecurityException e) {
+
+            System.out.println(ColoresConsola.ROJO + "[ERROR] " + e.getMessage() + ColoresConsola.RESET);
+
+        } catch (IOException e) {
+
+            System.out.println(ColoresConsola.ROJO + "[ERROR] al leer el fichero: " + e.getMessage() + ColoresConsola.RESET);
         }
     }
 
